@@ -1,9 +1,10 @@
 //Boilerplate start
 //defining some objects from the Matter library - Matter is a global variable
-const { Engine, Render, Runner, World, Bodies, MouseConstraint, Mouse } =
-  Matter;
-const width = 800;
+const { Engine, Render, Runner, World, Bodies } = Matter;
+const cells = 3;
+const width = 600;
 const height = 600;
+const borderWidth = 20;
 const engine = Engine.create();
 const { world } = engine;
 const render = Render.create({
@@ -19,53 +20,95 @@ Render.run(render);
 Runner.run(Runner.create(), engine);
 //Boilerplate end
 
-//Clicking and Dragging
-World.add(
-  world,
-  MouseConstraint.create(engine, {
-    mouse: Mouse.create(render.canvas),
-  })
-);
-
-//the first two numbers represent the position of the shape.. the second two number represent the size
-const shape = Bodies.rectangle(200, 200, 50, 50, {
-  isStatic: true, // this means we do not want it to move , false makes it fall to gravity!
-});
-World.add(world, shape);
-//the world object has all the shapes inside Bodies
-//each shape has many properties
-//AngularVelocity : how quickly is rotate and the direction
-//Position: the fysical position
-//Velocity: how quickly it moves up/down/left/right
-
 //walls : to prevent the shape from going outside the canvas - Drawing borders
 const walls = [
-  Bodies.rectangle(400, 0, 800, 40, { isStatic: true }),
-  Bodies.rectangle(400, 600, 800, 40, { isStatic: true }),
-  Bodies.rectangle(0, 300, 40, 800, { isStatic: true }),
-  Bodies.rectangle(800, 300, 40, 800, { isStatic: true }),
+  Bodies.rectangle(width / 2, 0, width, borderWidth * 2, { isStatic: true }),
+  Bodies.rectangle(width / 2, height, width, borderWidth * 2, {
+    isStatic: true,
+  }),
+  Bodies.rectangle(0, height / 2, borderWidth * 2, height, { isStatic: true }),
+  Bodies.rectangle(width, height / 2, borderWidth * 2, height, {
+    isStatic: true,
+  }),
 ];
 World.add(world, walls);
 
-//add a shape to world directly
-World.add(world, Bodies.rectangle(200, 200, 50, 50));
+//Maze generation - outer for col, inner array for rows#
 
-//Add random shapes
-for (let i = 0; i < 40; i++) {
-  if (Math.random() > 0.5) {
-    World.add(world, Bodies.rectangle(200, 200, 50, 50)); //stacked shapes
-    World.add(
-      world,
-      Bodies.rectangle(Math.random() * width, Math.random() * height, 50, 50)
-    ); //random locations
-  } else {
-    World.add(
-      world,
-      Bodies.circle(Math.random() * width, Math.random() * height, 35, {
-        render: {
-          fillStyle: "red",
-        },
-      }) //third value is raduis
-    );
+const shuffle = (arr) => {
+  let counter = arr.length;
+  while (counter > 0) {
+    const index = Math.floor(Math.random() * counter);
+    counter--;
+    const temp = arr[counter];
+    arr[counter] = arr[index];
+    arr[index] = temp;
   }
-}
+  return arr;
+};
+const grid = Array(cells)
+  .fill(null)
+  .map(() => Array(cells).fill(false));
+
+const verticals = Array(cells)
+  .fill(null)
+  .map(() => Array(cells - 1).fill(false));
+
+const horizontals = Array(cells - 1)
+  .fill(null)
+  .map(() => Array(cells).fill(false));
+
+///////////////////////////////////////////////////////random starting cell
+const startRow = Math.floor(Math.random() * cells);
+const startColumn = Math.floor(Math.random() * cells);
+
+const stepThroughCell = (row, column) => {
+  //If I have visited the cell at [row,column], return
+  if (grid[row][column]) {
+    console.log("1");
+    return;
+  }
+  //Mark this cell as being visited
+  grid[row][column] = true;
+  //Assemble randomly-ordered list of neighbors
+  const neighbors = shuffle([
+    [row - 1, column, "up"],
+    [row, column + 1, "right"],
+    [row + 1, column, "down"],
+    [row, column - 1, "left"],
+  ]);
+  //For each neighbor ...
+  for (let neighbor of neighbors) {
+    const [nextRow, nextColumn, direction] = neighbor;
+
+    //See if that neighbor is out of bounds -- when on the edges of the screen
+    if (
+      nextRow < 0 ||
+      nextRow >= cells ||
+      nextColumn < 0 ||
+      nextColumn >= cells
+    ) {
+      continue; //keywords used inside loops to skip the current iteration and move on to the next one
+    }
+    //If we have visited that neighbor, continue to next neighbor
+    if (grid[nextRow][nextColumn]) {
+      continue;
+    }
+
+    //Remove a wall from either horizontals or verticals
+
+    if (direction === "left") {
+      verticals[row][column - 1] = true;
+    } else if (direction === "right") {
+      verticals[row][column] = true;
+    } else if (direction === "up") {
+      horizontals[row - 1][column] = true;
+    } else if (direction === "down") {
+      horizontals[row][column] = true;
+    }
+
+    stepThroughCell(nextRow, nextColumn);
+  }
+  //Visit that next cell
+};
+stepThroughCell(1, 1);
