@@ -1,10 +1,13 @@
 //Boilerplate start
 //defining some objects from the Matter library - Matter is a global variable
-const { Engine, Render, Runner, World, Bodies } = Matter;
-const cells = 3;
+const { Engine, Render, Runner, World, Bodies, Body } = Matter;
+//Body: a property for functions inside a shape i.e position, velocity, rotation
+const cells = 8;
 const width = 600;
 const height = 600;
-const borderWidth = 20;
+const unitLength = width / cells;
+const borderWidth = 1;
+
 const engine = Engine.create();
 const { world } = engine;
 const render = Render.create({
@@ -112,3 +115,79 @@ const stepThroughCell = (row, column) => {
   //Visit that next cell
 };
 stepThroughCell(1, 1);
+
+//iterating over walls
+horizontals.forEach((row, rowIndex) => {
+  row.forEach((open, columnIndex) => {
+    if (open === true) {
+      return;
+    }
+    const wall = Bodies.rectangle(
+      columnIndex * unitLength + unitLength / 2,
+      rowIndex * unitLength + unitLength,
+      unitLength,
+      10,
+      {
+        isStatic: true,
+      }
+    );
+    World.add(world, wall);
+  });
+});
+
+verticals.forEach((row, rowIndex) => {
+  row.forEach((open, columnIndex) => {
+    if (open === true) {
+      return;
+    }
+    const wall = Bodies.rectangle(
+      columnIndex * unitLength + unitLength,
+      rowIndex * unitLength + unitLength / 2,
+      10,
+      unitLength,
+      {
+        isStatic: true,
+      }
+    );
+    World.add(world, wall);
+  });
+});
+
+//Drawing the goal
+const goal = Bodies.rectangle(
+  width - unitLength / 2,
+  height - unitLength / 2,
+  unitLength * 0.7,
+  unitLength * 0.7,
+  {
+    isStatic: true,
+  }
+);
+World.add(world, goal);
+
+//Drawing the playing ball
+const ball = Bodies.circle(unitLength / 2, unitLength / 2, unitLength / 4);
+World.add(world, ball);
+
+//Handling keypresses
+document.addEventListener("keydown", (event) => {
+  //adding keyboard controls - destructuring
+  const { x, y } = ball.velocity;
+  //https://keycode.info/
+  //key W
+  if (event.keyCode === 87) {
+    console.log("move ball up");
+  }
+  //key D
+  if (event.keyCode === 68) {
+    console.log("move ball right");
+  }
+  //key S
+  if (event.keyCode === 83) {
+    console.log("move ball down");
+  }
+  //key A
+  if (event.keyCode === 65) {
+    console.log("move ball left");
+  }
+});
