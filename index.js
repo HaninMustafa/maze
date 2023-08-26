@@ -1,14 +1,29 @@
 //Boilerplate start
 //defining some objects from the Matter library - Matter is a global variable
-const { Engine, Render, Runner, World, Bodies, Body } = Matter;
+const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
 //Body: a property for functions inside a shape i.e position, velocity, rotation
-const cells = 8;
-const width = 600;
-const height = 600;
-const unitLength = width / cells;
-const borderWidth = 1;
+//Events: an object that listen for things that occured inside the world object
+
+//squere maze
+// const cells = 3;
+//Rectangular maze
+const cellsHorizontal = 14;
+const cellsVertical = 8;
+//strtching the canvas
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+//squere maze
+//const unitLength = width / cells;
+
+//Rectangular maze
+const unitLengthX = width / cellsHorizontal;
+const unitLengthY = height / cellsVertical;
+
+const borderWidth = 5;
 
 const engine = Engine.create();
+engine.world.gravity.y = 0; //disabling gravity
 const { world } = engine;
 const render = Render.create({
   element: document.body, // this is the location of the canvas
@@ -49,26 +64,25 @@ const shuffle = (arr) => {
   }
   return arr;
 };
-const grid = Array(cells)
+const grid = Array(cellsVertical)
   .fill(null)
-  .map(() => Array(cells).fill(false));
+  .map(() => Array(cellsHorizontal).fill(false));
 
-const verticals = Array(cells)
+const verticals = Array(cellsVertical)
   .fill(null)
-  .map(() => Array(cells - 1).fill(false));
+  .map(() => Array(cellsHorizontal - 1).fill(false));
 
-const horizontals = Array(cells - 1)
+const horizontals = Array(cellsVertical - 1)
   .fill(null)
-  .map(() => Array(cells).fill(false));
+  .map(() => Array(cellsHorizontal).fill(false));
 
 ///////////////////////////////////////////////////////random starting cell
-const startRow = Math.floor(Math.random() * cells);
-const startColumn = Math.floor(Math.random() * cells);
+const startRow = Math.floor(Math.random() * cellsVertical);
+const startColumn = Math.floor(Math.random() * cellsHorizontal);
 
 const stepThroughCell = (row, column) => {
   //If I have visited the cell at [row,column], return
   if (grid[row][column]) {
-    console.log("1");
     return;
   }
   //Mark this cell as being visited
@@ -87,9 +101,9 @@ const stepThroughCell = (row, column) => {
     //See if that neighbor is out of bounds -- when on the edges of the screen
     if (
       nextRow < 0 ||
-      nextRow >= cells ||
+      nextRow >= cellsVertical ||
       nextColumn < 0 ||
-      nextColumn >= cells
+      nextColumn >= cellsHorizontal
     ) {
       continue; //keywords used inside loops to skip the current iteration and move on to the next one
     }
@@ -114,21 +128,25 @@ const stepThroughCell = (row, column) => {
   }
   //Visit that next cell
 };
-stepThroughCell(1, 1);
+stepThroughCell(startRow, startColumn);
 
 //iterating over walls
 horizontals.forEach((row, rowIndex) => {
   row.forEach((open, columnIndex) => {
-    if (open === true) {
+    if (open) {
       return;
     }
     const wall = Bodies.rectangle(
-      columnIndex * unitLength + unitLength / 2,
-      rowIndex * unitLength + unitLength,
-      unitLength,
+      columnIndex * unitLengthX + unitLengthX / 2,
+      rowIndex * unitLengthY + unitLengthY,
+      unitLengthX,
       10,
       {
+        label: "wall",
         isStatic: true,
+        render: {
+          fillStyle: "red",
+        },
       }
     );
     World.add(world, wall);
@@ -137,16 +155,20 @@ horizontals.forEach((row, rowIndex) => {
 
 verticals.forEach((row, rowIndex) => {
   row.forEach((open, columnIndex) => {
-    if (open === true) {
+    if (open) {
       return;
     }
     const wall = Bodies.rectangle(
-      columnIndex * unitLength + unitLength,
-      rowIndex * unitLength + unitLength / 2,
+      columnIndex * unitLengthX + unitLengthX,
+      rowIndex * unitLengthY + unitLengthY / 2,
       10,
-      unitLength,
+      unitLengthY,
       {
+        label: "wall",
         isStatic: true,
+        render: {
+          fillStyle: "red",
+        },
       }
     );
     World.add(world, wall);
@@ -155,39 +177,70 @@ verticals.forEach((row, rowIndex) => {
 
 //Drawing the goal
 const goal = Bodies.rectangle(
-  width - unitLength / 2,
-  height - unitLength / 2,
-  unitLength * 0.7,
-  unitLength * 0.7,
+  width - unitLengthX / 2,
+  height - unitLengthY / 2,
+  unitLengthX * 0.7,
+  unitLengthY * 0.7,
   {
+    label: "goal",
     isStatic: true,
+    render: {
+      fillStyle: "green",
+    },
   }
 );
 World.add(world, goal);
 
 //Drawing the playing ball
-const ball = Bodies.circle(unitLength / 2, unitLength / 2, unitLength / 4);
+const ballRadius = Math.min(unitLengthX, unitLengthY) / 4;
+const ball = Bodies.circle(unitLengthX / 2, unitLengthY / 2, ballRadius, {
+  label: "ball",
+  render: {
+    fillStyle: "blue",
+  },
+});
 World.add(world, ball);
 
 //Handling keypresses
 document.addEventListener("keydown", (event) => {
-  //adding keyboard controls - destructuring
-  const { x, y } = ball.velocity;
+  //adding keyboard controls
+  const { x, y } = ball.velocity; //destructuring
   //https://keycode.info/
-  //key W
+
+  //key W: up
   if (event.keyCode === 87) {
-    console.log("move ball up");
+    Body.setVelocity(ball, { x, y: y - 5 }); //update the velocity of a shape
   }
-  //key D
+
+  //key D: right
   if (event.keyCode === 68) {
-    console.log("move ball right");
+    Body.setVelocity(ball, { x: x + 5, y });
   }
-  //key S
+  //key S: down
   if (event.keyCode === 83) {
-    console.log("move ball down");
+    Body.setVelocity(ball, { x, y: y + 5 });
   }
-  //key A
+  //key A: left
   if (event.keyCode === 65) {
-    console.log("move ball left");
+    Body.setVelocity(ball, { x: x - 5, y });
   }
+});
+//Detecting a win
+Events.on(engine, "collisionStart", (event) => {
+  event.pairs.forEach((collision) => {
+    const labels = ["ball", "goal"];
+    if (
+      labels.includes(collision.bodyA.label) &&
+      labels.includes(collision.bodyB.label)
+    ) {
+      //adding a won animation - gravity on and maze fall
+      document.querySelector(".winner").classList.remove("hidden");
+      world.gravity.y = 1;
+      world.bodies.forEach((body) => {
+        if (body.label == "wall") {
+          Body.setStatic(body, false);
+        }
+      });
+    }
+  });
 });
